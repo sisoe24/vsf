@@ -11,6 +11,61 @@ import (
 	"strings"
 )
 
+// computeMaxLengths iterates over all rows and updates the max length
+// for each column index.
+func computeMaxLengths(rows [][]string) []int {
+	var maxLengths []int
+	for _, row := range rows {
+		for i, cell := range row {
+			if i >= len(maxLengths) {
+				maxLengths = append(maxLengths, len(cell))
+			} else if len(cell) > maxLengths[i] {
+				maxLengths[i] = len(cell)
+			}
+		}
+	}
+	return maxLengths
+}
+
+// parseLine splits a single line into columns, respecting quotes so that
+// delimiters inside quotes are not considered splitting points.
+func parseLine(line, delimiter string) []string {
+	line = strings.TrimSpace(line)
+	var (
+		result   []string
+		current  strings.Builder
+		inQuotes bool
+	)
+
+	i := 0
+	for i < len(line) {
+		char := line[i]
+
+		if char == '"' || char == '\'' {
+			inQuotes = !inQuotes
+			current.WriteByte(char)
+			i++
+			continue
+		}
+
+		if !inQuotes && strings.HasPrefix(line[i:], delimiter) {
+			result = append(result, strings.TrimSpace(current.String()))
+			current.Reset()
+			i += len(delimiter)
+			continue
+		}
+
+		current.WriteByte(char)
+		i++
+	}
+
+	if current.Len() > 0 {
+		result = append(result, strings.TrimSpace(current.String()))
+	}
+
+	return result
+}
+
 // formatInput takes an input string, splits it into lines, and then formats each line
 // by aligning the columns based on the specified delimiter.
 //
@@ -22,48 +77,38 @@ import (
 // Returns:
 //   - A formatted string with aligned columns.
 //   - An error if the input is empty or if any other error occurs during formatting.
+//
 // Example:
-//     formatInput("name:john\nage:30\ncity:new york", ":", "")
+//
+//	formatInput("name:john\nage:30\ncity:new york", ":", "")
 func formatInput(input, delimiter, outputDelimiter string) (string, error) {
-	lines := strings.Split(strings.TrimSpace(input), "\n")
-	if len(lines) == 1 && lines[0] == "" {
+	input = strings.TrimSpace(input)
+	if input == "" {
 		return "", fmt.Errorf("empty input")
 	}
 
-	var maxLengths []int
+	lines := strings.Split(input, "\n")
+
 	segments := make([][]string, len(lines))
-
 	for i, line := range lines {
+		parsed := parseLine(line, delimiter)
+		segments[i] = parsed
+	}
 
-		line = strings.TrimSpace(line)
-		segments[i] = strings.Split(line, delimiter)
+	maxLengths := computeMaxLengths(segments)
 
-		for j, segment := range segments[i] {
-			segment = strings.TrimSpace(segment)
-			segments[i][j] = segment
-
-			if j >= len(maxLengths) {
-				maxLengths = append(maxLengths, len(segment))
-			} else if len(segment) > maxLengths[j] {
-				maxLengths[j] = len(segment)
-			}
-		}
-
+	if outputDelimiter == "" {
+		outputDelimiter = delimiter
 	}
 
 	var output strings.Builder
-
-  if outputDelimiter != "" {
-    delimiter = outputDelimiter
-  }
-
-	for _, lineSegments := range segments {
-		for j, segment := range lineSegments {
-			output.WriteString(segment)
-
-			if j < len(lineSegments)-1 {
-				padding := strings.Repeat(" ", maxLengths[j]-len(segment))
-				output.WriteString(padding + " " + delimiter + " ")
+	for _, row := range segments {
+		for colIndex, cell := range row {
+			output.WriteString(cell)
+			if colIndex < len(row)-1 {
+				padding := maxLengths[colIndex] - len(cell)
+				output.WriteString(strings.Repeat(" ", padding))
+				output.WriteString(" " + outputDelimiter + " ")
 			}
 		}
 		output.WriteString("\n")
