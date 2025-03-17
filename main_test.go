@@ -46,6 +46,22 @@ func TestFormatInput(t *testing.T) {
 			wantErr:         false,
 		},
 		{
+			name:            "Space delimiter",
+			input:           "field1 value1\nfield2 value2",
+			delimiter:       " ",
+			outputDelimiter: "|",
+			want:            "field1 | value1\nfield2 | value2",
+			wantErr:         false,
+		},
+		{
+			name:            "Space delimiter with quotes",
+			input:           "'long field' value\n\"long field2\" value2",
+			delimiter:       " ",
+			outputDelimiter: "|",
+			want:            "'long field'  | value\n\"long field2\" | value2",
+			wantErr:         false,
+		},
+		{
 			name:            "Single line",
 			input:           "key:value",
 			delimiter:       ":",
