@@ -118,9 +118,11 @@ func formatInput(input, delimiter, outputDelimiter string) (string, error) {
 }
 
 func main() {
-	delimiter := flag.String("d", ":", "Delimiter used. Default ':'")
-	outputDelimiter := flag.String("o", "", "Output text with selected delimiter")
-	usage := flag.Bool("h", false, "Show usage information")
+	var (
+		delimiter       = flag.String("d", ":", "Delimiter used. Default ':'")
+		outputDelimiter = flag.String("o", "", "Output text with selected delimiter")
+		usage           = flag.Bool("h", false, "Show usage information")
+	)
 
 	flag.Usage = showUsage
 	flag.Parse()
