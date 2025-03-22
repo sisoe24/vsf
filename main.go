@@ -1,5 +1,4 @@
-// Package main provides a command-line tool for formatting input text
-// by aligning columns based on a specified delimiter.
+// A command-line tool for formatting input text by aligning columns based on a specified delimiter.
 package main
 
 import (
@@ -27,8 +26,7 @@ func computeMaxLengths(rows [][]string) []int {
 	return maxLengths
 }
 
-// parseLine splits a single line into columns, respecting quotes so that
-// delimiters inside quotes are not considered splitting points.
+// parseLine splits a single line into columns respecting quotes
 func parseLine(line, delimiter string) []string {
 	line = strings.TrimSpace(line)
 	var (
