@@ -5,14 +5,14 @@ A Go CLI tool for column alignment and text formatting. Works great with fzf.
 ## What it does
 
 - Aligns text columns based on delimiters
-- Integrates smoothly with fzf and Unix pipelines
+- Integrates with fzf and Unix pipelines
 - Handy for formatting Git logs, CSVs, and other structured text
 
 ## Quick start
 
 ```bash
-go install github.com/sisoe24/vsf
-echo "name:age\njohnny:30\namy:25" | vsf | fzf --header-lines 1
+go install github.com/sisoe24/vsf@latest
+echo "name:city:age\njohnny:new york:30\namy:rome:25" | vsf | fzf --header-lines 1
 ```
 
 ## Basic usage
@@ -21,24 +21,24 @@ echo "name:age\njohnny:30\namy:25" | vsf | fzf --header-lines 1
 vsf [-d delimiter] [-o output_delimiter] [-h]
 ```
 
-## Some useful examples
+## Examples
 
-### Git branch formatting
+* Git branch formatting
 
-```bash
-git for-each-ref --sort=-committerdate refs/heads/ --format='%(refname:short):%(committerdate:short)' | vsf -o "|" | fzf
-```
+  ```bash
+  git for-each-ref --sort=-committerdate refs/heads/ --format='%(refname:short):%(committerdate:short)' | vsf -o "|" | fzf
+  ```
 
-### CSV exploration
+* CSV
 
-```bash
-cat data.csv | vsf -d ',' | fzf --header-lines 1
-```
+  ```bash
+  cat data.csv | vsf -d ',' | fzf --header-lines 1
+  ```
 
 ## Development
 
 ```bash
-make  # Build
+make       # Build
 make test  # Run tests
 ```
 
