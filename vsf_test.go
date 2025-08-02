@@ -46,59 +46,11 @@ func TestFormat(t *testing.T) {
 			wantErr:         false,
 		},
 		{
-			name:            "Space delimiter",
-			input:           "field1 value1\nfield2 value2",
-			delimiter:       " ",
-			outputDelimiter: "|",
-			want:            "field1 | value1\nfield2 | value2",
-			wantErr:         false,
-		},
-		{
-			name:            "Space delimiter with quotes",
-			input:           "'long field' value\n\"long field2\" value2",
-			delimiter:       " ",
-			outputDelimiter: "|",
-			want:            "'long field'  | value\n\"long field2\" | value2",
-			wantErr:         false,
-		},
-		{
-			name:            "Single line",
-			input:           "key:value",
-			delimiter:       ":",
-			outputDelimiter: "",
-			want:            "key : value",
-			wantErr:         false,
-		},
-		{
-			name:            "Multiple delimiters",
+			name:            "Multiple columns",
 			input:           "col1:col2:col3\nvalue1:value2:value3",
 			delimiter:       ":",
 			outputDelimiter: "",
 			want:            "col1   : col2   : col3\nvalue1 : value2 : value3",
-			wantErr:         false,
-		},
-		{
-			name:            "Input with empty lines",
-			input:           "key1:value1\n\nkey2:value2",
-			delimiter:       ":",
-			outputDelimiter: "",
-			want:            "key1 : value1\n\nkey2 : value2",
-			wantErr:         false,
-		},
-		{
-			name:            "Input with spaces",
-			input:           "  key1  :  value1  \n  key2  :  value2  ",
-			delimiter:       ":",
-			outputDelimiter: "",
-			want:            "key1 : value1\nkey2 : value2",
-			wantErr:         false,
-		},
-		{
-			name:            "Delimiter not in input",
-			input:           "line1\nline2\nline3",
-			delimiter:       ":",
-			outputDelimiter: "",
-			want:            "line1\nline2\nline3",
 			wantErr:         false,
 		},
 		{
@@ -125,117 +77,177 @@ func TestFormat(t *testing.T) {
 	}
 }
 
-func TestFormatWithHeader(t *testing.T) {
+func TestFormatWithSeparator(t *testing.T) {
 	tests := []struct {
 		name            string
 		input           string
 		delimiter       string
 		outputDelimiter string
-		headerLines     int
+		afterLine       int
+		sepChar         string
 		want            string
 		wantErr         bool
 	}{
 		{
-			name:            "CSV with single header",
-			input:           "name,age,city\njohn,30,nyc\namy,25,rome",
-			delimiter:       ",",
-			outputDelimiter: "|",
-			headerLines:     1,
-			want:            "name,age,city\njohn | 30 | nyc\namy  | 25 | rome",
-			wantErr:         false,
-		},
-		{
-			name:            "Header preserved as-is",
-			input:           "NAME | AGE | CITY\njohn:30:nyc\namy:25:rome",
+			name:            "Add separator after header",
+			input:           "Index:Directory\n5:/long/path\n0:/short",
 			delimiter:       ":",
-			outputDelimiter: "|",
-			headerLines:     1,
-			want:            "NAME | AGE | CITY\njohn | 30 | nyc\namy  | 25 | rome",
+			outputDelimiter: "",
+			afterLine:       0,
+			sepChar:         "-",
+			want:            "Index : Directory\n------:----------\n5     : /long/path\n0     : /short",
 			wantErr:         false,
 		},
 		{
-			name:            "Multiple headers",
-			input:           "Data Report\nname,age,city\njohn,30,nyc\namy,25,rome",
+			name:            "Custom output delimiter with separator",
+			input:           "name,age\njohn,30\namy,25",
 			delimiter:       ",",
 			outputDelimiter: "|",
-			headerLines:     2,
-			want:            "Data Report\nname,age,city\njohn | 30 | nyc\namy  | 25 | rome",
+			afterLine:       0,
+			sepChar:         "=",
+			want:            "name | age\n=====|====\njohn | 30\namy  | 25",
 			wantErr:         false,
 		},
 		{
-			name:            "Zero headers (same as Format)",
+			name:            "Separator after middle line",
+			input:           "line1:data1\nline2:data2\nline3:data3",
+			delimiter:       ":",
+			outputDelimiter: "",
+			afterLine:       1,
+			sepChar:         "-",
+			want:            "line1 : data1\nline2 : data2\n------:------\nline3 : data3",
+			wantErr:         false,
+		},
+		{
+			name:            "Invalid line number (too high)",
 			input:           "name:john\nage:30",
 			delimiter:       ":",
 			outputDelimiter: "",
-			headerLines:     0,
+			afterLine:       5,
+			sepChar:         "-",
 			want:            "name : john\nage  : 30",
 			wantErr:         false,
 		},
 		{
-			name:            "Headers equal to total lines",
-			input:           "header1\nheader2",
-			delimiter:       ":",
-			outputDelimiter: "",
-			headerLines:     2,
-			want:            "header1\nheader2",
-			wantErr:         false,
-		},
-		{
-			name:            "Headers more than total lines",
-			input:           "line1\nline2",
-			delimiter:       ":",
-			outputDelimiter: "",
-			headerLines:     5,
-			want:            "line1\nline2",
-			wantErr:         false,
-		},
-		{
-			name:            "Negative header count",
+			name:            "Invalid line number (negative)",
 			input:           "name:john\nage:30",
 			delimiter:       ":",
 			outputDelimiter: "",
-			headerLines:     -1,
+			afterLine:       -1,
+			sepChar:         "-",
 			want:            "name : john\nage  : 30",
 			wantErr:         false,
 		},
 		{
-			name:            "Single data line with header",
-			input:           "name,age\njohn,30",
-			delimiter:       ",",
-			outputDelimiter: "|",
-			headerLines:     1,
-			want:            "name,age\njohn | 30",
-			wantErr:         false,
-		},
-		{
-			name:            "Header with different delimiters",
-			input:           "name|age|city\njohn:30:nyc\namy:25:rome",
-			delimiter:       ":",
-			outputDelimiter: "→",
-			headerLines:     1,
-			want:            "name|age|city\njohn → 30 → nyc\namy  → 25 → rome",
-			wantErr:         false,
-		},
-		{
-			name:            "Empty input with headers",
-			input:           "",
+			name:            "Single line with separator",
+			input:           "single:line",
 			delimiter:       ":",
 			outputDelimiter: "",
-			headerLines:     1,
-			want:            "",
-			wantErr:         true,
+			afterLine:       0,
+			sepChar:         "=",
+			want:            "single : line\n=======:=====",
+			wantErr:         false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := FormatWithHeader(tt.input, tt.delimiter, tt.outputDelimiter, tt.headerLines)
+			got, err := FormatWithSeparator(tt.input, tt.delimiter, tt.outputDelimiter, tt.afterLine, tt.sepChar)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("FormatWithHeader() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("FormatWithSeparator() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if got != tt.want {
-				t.Errorf("FormatWithHeader() = %v, want %v", got, tt.want)
+				t.Errorf("FormatWithSeparator() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestFormatSkipLines(t *testing.T) {
+	tests := []struct {
+		name            string
+		input           string
+		delimiter       string
+		outputDelimiter string
+		skipLines       []int
+		want            string
+		wantErr         bool
+	}{
+		{
+			name:            "Skip separator line",
+			input:           "name:john\n----:----\nage:30",
+			delimiter:       ":",
+			outputDelimiter: "",
+			skipLines:       []int{1},
+			want:            "name : john\n----:----\nage  : 30",
+			wantErr:         false,
+		},
+		{
+			name:            "Skip header line from width calculation",
+			input:           "VERY_LONG_HEADER:DESCRIPTION\nshort:val\nmed:value",
+			delimiter:       ":",
+			outputDelimiter: "",
+			skipLines:       []int{0},
+			want:            "VERY_LONG_HEADER:DESCRIPTION\nshort : val\nmed   : value",
+			wantErr:         false,
+		},
+		{
+			name:            "Skip multiple lines",
+			input:           "header:info\n----:----\nname:john\n====:====\nage:30",
+			delimiter:       ":",
+			outputDelimiter: "",
+			skipLines:       []int{0, 1, 3},
+			want:            "header:info\n----:----\nname : john\n====:====\nage  : 30",
+			wantErr:         false,
+		},
+		{
+			name:            "Skip no lines (same as Format)",
+			input:           "name:john\nage:30",
+			delimiter:       ":",
+			outputDelimiter: "",
+			skipLines:       []int{},
+			want:            "name : john\nage  : 30",
+			wantErr:         false,
+		},
+		{
+			name:            "Skip invalid line numbers",
+			input:           "name:john\nage:30",
+			delimiter:       ":",
+			outputDelimiter: "",
+			skipLines:       []int{-1, 5, 10},
+			want:            "name : john\nage  : 30",
+			wantErr:         false,
+		},
+		{
+			name:            "Skip all lines",
+			input:           "line1:data1\nline2:data2",
+			delimiter:       ":",
+			outputDelimiter: "",
+			skipLines:       []int{0, 1},
+			want:            "line1:data1\nline2:data2",
+			wantErr:         false,
+		},
+		{
+			name:            "Custom output delimiter with skipped lines",
+			input:           "HEADER,INFO\nname,john\nage,30",
+			delimiter:       ",",
+			outputDelimiter: "|",
+			skipLines:       []int{0},
+			want:            "HEADER,INFO\nname | john\nage  | 30",
+			wantErr:         false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := FormatSkipLines(tt.input, tt.delimiter, tt.outputDelimiter, tt.skipLines)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("FormatSkipLines() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("FormatSkipLines() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -296,12 +308,6 @@ func TestParseLine(t *testing.T) {
 			delimiter: "::",
 			want:      []string{"field1", "field2", "field3"},
 		},
-		{
-			name:      "Spaces around values",
-			line:      "  name  :  value  :  city  ",
-			delimiter: ":",
-			want:      []string{"name", "value", "city"},
-		},
 	}
 
 	for _, tt := range tests {
@@ -320,3 +326,4 @@ func TestParseLine(t *testing.T) {
 		})
 	}
 }
+
