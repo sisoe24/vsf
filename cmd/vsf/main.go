@@ -12,6 +12,8 @@ import (
 	"github.com/sisoe24/vsf"
 )
 
+const VERSION = "1.3.0"
+
 func main() {
 	var (
 		delimiter       = flag.String("d", ":", "Delimiter used.")
@@ -19,6 +21,7 @@ func main() {
 		sepAfter        = flag.Int("sep-after", -1, "Add separator after this line number (0-based)")
 		sepChar         = flag.String("sep-char", "═", "Character to use for separator line")
 		skipLines       = flag.String("skip", "", "Comma-separated line numbers to skip from width calculations (0-based)")
+		version         = flag.Bool("version", false, "Print current version")
 		usage           = flag.Bool("h", false, "Show usage information")
 	)
 
@@ -28,6 +31,12 @@ func main() {
 	if *usage {
 		flag.Usage()
 		os.Exit(0)
+	}
+
+	if *version {
+		fmt.Println(VERSION)
+		os.Exit(0)
+
 	}
 
 	scanner := bufio.NewScanner(os.Stdin)
@@ -99,6 +108,7 @@ func parseLineNumbers(s string) ([]int, error) {
 }
 
 func showUsage() {
+	fmt.Fprintf(os.Stderr, "vsf version: %s\n", VERSION)
 	fmt.Fprintf(os.Stderr, "Usage: %s [OPTIONS]\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "\nOptions:\n")
 	flag.PrintDefaults()
