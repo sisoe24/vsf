@@ -1,4 +1,3 @@
-// A command-line tool for formatting input text by aligning columns based on a specified delimiter.
 package main
 
 import (
@@ -12,13 +11,11 @@ import (
 	"github.com/sisoe24/vsf"
 )
 
-const VERSION = "v1.2.0"
-
 func main() {
 	var (
 		delimiter       = flag.String("d", ":", "Delimiter used. Default ':'")
 		outputDelimiter = flag.String("o", "", "Output text with selected delimiter")
-		version         = flag.Bool("version", false, "Prints current version")
+		headerLines     = flag.Int("header", 0, "Number of header lines to ignore in alignment calculations")
 		usage           = flag.Bool("h", false, "Show usage information")
 	)
 
@@ -27,11 +24,6 @@ func main() {
 
 	if *usage {
 		flag.Usage()
-		os.Exit(0)
-	}
-
-	if *version {
-		fmt.Println(VERSION)
 		os.Exit(0)
 	}
 
@@ -44,7 +36,15 @@ func main() {
 		log.Fatalf("Error reading input: %v", err)
 	}
 
-	formattedOutput, err := vsf.AlignColumns(input.String(), *delimiter, *outputDelimiter)
+	var formattedOutput string
+	var err error
+
+	if *headerLines > 0 {
+		formattedOutput, err = vsf.FormatWithHeader(input.String(), *delimiter, *outputDelimiter, *headerLines)
+	} else {
+		formattedOutput, err = vsf.Format(input.String(), *delimiter, *outputDelimiter)
+	}
+
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -60,10 +60,17 @@ func showUsage() {
 	fmt.Fprintf(os.Stderr, "  This program formats input text by aligning columns based on a specified delimiter.\n")
 	fmt.Fprintf(os.Stderr, "  Input is read from stdin. Each line is split by the delimiter, and columns are padded\n")
 	fmt.Fprintf(os.Stderr, "  to align with the widest entry in each column.\n")
-	fmt.Fprintf(os.Stderr, "\nExample:\n")
-	fmt.Fprintf(os.Stderr, "  echo -e \"name:john\\nage:30\\ncity:new york\" | %s\n", os.Args[0])
-	fmt.Fprintf(os.Stderr, "  Output:\n")
-	fmt.Fprintf(os.Stderr, "    name : john\n")
-	fmt.Fprintf(os.Stderr, "    age  : 30\n")
-	fmt.Fprintf(os.Stderr, "    city : new york\n")
+	fmt.Fprintf(os.Stderr, "\nExamples:\n")
+	fmt.Fprintf(os.Stderr, "  Basic formatting:\n")
+	fmt.Fprintf(os.Stderr, "    echo -e \"name:john\\nage:30\\ncity:new york\" | %s\n", os.Args[0])
+	fmt.Fprintf(os.Stderr, "    Output:\n")
+	fmt.Fprintf(os.Stderr, "      name : john\n")
+	fmt.Fprintf(os.Stderr, "      age  : 30\n")
+	fmt.Fprintf(os.Stderr, "      city : new york\n")
+	fmt.Fprintf(os.Stderr, "\n")
+	fmt.Fprintf(os.Stderr, "  CSV with headers (perfect for fzf):\n")
+	fmt.Fprintf(os.Stderr, "    cat data.csv | %s -d ',' -header 1 | fzf --header-lines 1\n", os.Args[0])
+	fmt.Fprintf(os.Stderr, "\n")
+	fmt.Fprintf(os.Stderr, "  Custom output delimiter:\n")
+	fmt.Fprintf(os.Stderr, "    echo \"a:b:c\" | %s -o ' | '\n", os.Args[0])
 }
