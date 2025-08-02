@@ -1,4 +1,4 @@
-package main
+package vsf
 
 import (
 	"testing"
@@ -113,7 +113,7 @@ func TestFormatInput(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := formatInput(tt.input, tt.delimiter, tt.outputDelimiter)
+			got, err := AlignColumns(tt.input, tt.delimiter, tt.outputDelimiter)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("formatInput() error = %v, wantErr %v", err, tt.wantErr)
 				return
