@@ -84,8 +84,77 @@ func ParseLine(line, delimiter string) []string {
 	return result
 }
 
-// formatColumns is the internal implementation used by both public functions
-func formatColumns(input, delimiter, outputDelimiter string, ignoreHeaderLines int) (string, error) {
+// Format formats input text by aligning columns based on a delimiter.
+// This handles 99% of use cases - just formats everything.
+//
+// Parameters:
+//   - input: The input string to be formatted
+//   - delimiter: The delimiter used to split each line into columns
+//   - outputDelimiter: The delimiter to use in the output. If empty, uses input delimiter
+//
+// Returns:
+//   - A formatted string with aligned columns
+//   - An error if the input is empty
+//
+// Example:
+//
+//	Format("name:john\nage:30\ncity:new york", ":", "")
+//	// Output: "name : john\nage  : 30\ncity : new york"
+func Format(input, delimiter, outputDelimiter string) (string, error) {
+	return formatColumns(input, delimiter, outputDelimiter, nil)
+}
+
+// FormatWithSeparator formats input text and adds a separator line after the specified line.
+// Perfect for adding separators after headers.
+//
+// Parameters:
+//   - input: The input string to be formatted
+//   - delimiter: The delimiter used to split each line into columns
+//   - outputDelimiter: The delimiter to use in the output. If empty, uses input delimiter
+//   - afterLine: Line number (0-based) after which to add separator
+//   - sepChar: Character to use for the separator line
+//
+// Returns:
+//   - A formatted string with aligned columns and separator
+//   - An error if the input is empty
+//
+// Example:
+//
+//	FormatWithSeparator("Index:Directory\n5:/path\n0:/short", ":", "", 0, "-")
+//	// Output: "Index : Directory\n------:---------\n5     : /path\n0     : /short"
+func FormatWithSeparator(input, delimiter, outputDelimiter string, afterLine int, sepChar string) (string, error) {
+	formatted, err := formatColumns(input, delimiter, outputDelimiter, nil)
+	if err != nil {
+		return "", err
+	}
+
+	return insertSeparatorAfterLine(formatted, afterLine, outputDelimiter, sepChar), nil
+}
+
+// FormatSkipLines formats input text while skipping certain lines from width calculations.
+// Useful when you have existing separator lines or headers that shouldn't affect column widths.
+//
+// Parameters:
+//   - input: The input string to be formatted
+//   - delimiter: The delimiter used to split each line into columns
+//   - outputDelimiter: The delimiter to use in the output. If empty, uses input delimiter
+//   - skipLines: Slice of line numbers (0-based) to skip from width calculations
+//
+// Returns:
+//   - A formatted string with aligned columns
+//   - An error if the input is empty
+//
+// Example:
+//
+//	FormatSkipLines("name:john\n----:----\nage:30", ":", "", []int{1})
+//	// Output: "name : john\n----:----\nage  : 30"
+//	// Line 1 (----:----) doesn't affect column widths
+func FormatSkipLines(input, delimiter, outputDelimiter string, skipLines []int) (string, error) {
+	return formatColumns(input, delimiter, outputDelimiter, skipLines)
+}
+
+// formatColumns is the core formatting function used by all public functions
+func formatColumns(input, delimiter, outputDelimiter string, skipLines []int) (string, error) {
 	input = strings.TrimSpace(input)
 	if input == "" {
 		return "", fmt.Errorf("empty input")
@@ -93,99 +162,100 @@ func formatColumns(input, delimiter, outputDelimiter string, ignoreHeaderLines i
 
 	lines := strings.Split(input, "\n")
 
-	if ignoreHeaderLines < 0 {
-		ignoreHeaderLines = 0
+	// Create skip map for O(1) lookup
+	skipMap := make(map[int]bool)
+	for _, lineNum := range skipLines {
+		if lineNum >= 0 && lineNum < len(lines) {
+			skipMap[lineNum] = true
+		}
 	}
 
-	if ignoreHeaderLines >= len(lines) {
-		// If we're ignoring all lines, just return the input as-is
-		return input, nil
-	}
+	// Parse all lines, but only use non-skipped lines for width calculation
+	allSegments := make([][]string, len(lines))
+	widthCalcSegments := make([][]string, 0)
 
-	// Split into header and data sections
-	headerLines := lines[:ignoreHeaderLines]
-	dataLines := lines[ignoreHeaderLines:]
-
-	// Parse only the data lines for alignment calculations
-	segments := make([][]string, len(dataLines))
-	for i, line := range dataLines {
+	for i, line := range lines {
 		parsed := ParseLine(line, delimiter)
-		segments[i] = parsed
+		allSegments[i] = parsed
+
+		// Only include in width calculation if not skipped
+		if !skipMap[i] {
+			widthCalcSegments = append(widthCalcSegments, parsed)
+		}
 	}
 
-	// Calculate max lengths only from data rows
-	maxLengths := computeMaxLengths(segments)
+	// Calculate max lengths only from non-skipped lines
+	maxLengths := computeMaxLengths(widthCalcSegments)
 
 	if outputDelimiter == "" {
 		outputDelimiter = delimiter
 	}
 
 	var output strings.Builder
-
-	// Add header lines unchanged
-	for _, headerLine := range headerLines {
-		output.WriteString(headerLine)
-		output.WriteString("\n")
-	}
-
-	// Format data lines with alignment
-	for _, row := range segments {
-		for colIndex, cell := range row {
-			output.WriteString(cell)
-			if colIndex < len(row)-1 {
-				padding := maxLengths[colIndex] - len(cell)
-				output.WriteString(strings.Repeat(" ", padding))
-				output.WriteString(" " + outputDelimiter + " ")
+	for i, row := range allSegments {
+		if skipMap[i] {
+			// For skipped lines, output as-is
+			output.WriteString(lines[i])
+		} else {
+			// For normal lines, format with alignment
+			for colIndex, cell := range row {
+				output.WriteString(cell)
+				if colIndex < len(row)-1 {
+					// Ensure we don't go out of bounds on maxLengths
+					padding := 0
+					if colIndex < len(maxLengths) {
+						padding = maxLengths[colIndex] - len(cell)
+					}
+					output.WriteString(strings.Repeat(" ", padding))
+					output.WriteString(" " + outputDelimiter + " ")
+				}
 			}
 		}
-		output.WriteString("\n")
+
+		if i < len(allSegments)-1 {
+			output.WriteString("\n")
+		}
 	}
 
-	return strings.TrimSpace(output.String()), nil
+	return output.String(), nil
 }
 
-// Format formats input text by aligning columns based on a delimiter.
-//
-// Parameters:
-//   - input: The input string to be formatted.
-//   - delimiter: The delimiter used to split each line into columns.
-//   - outputDelimiter: The delimiter to use in the output. If empty, the input delimiter is used.
-//
-// Returns:
-//   - A formatted string with aligned columns.
-//   - An error if the input is empty or if any other error occurs during formatting.
-//
-// Example:
-//
-//	Format("name:john\nage:30\ncity:new york", ":", "")
-//	// Output:
-//	// name : john
-//	// age  : 30
-//	// city : new york
-func Format(input, delimiter, outputDelimiter string) (string, error) {
-	return formatColumns(input, delimiter, outputDelimiter, 0)
+// insertSeparatorAfterLine adds a separator line after the specified line number
+func insertSeparatorAfterLine(formatted string, afterLine int, outputDelimiter, sepChar string) string {
+	lines := strings.Split(formatted, "\n")
+
+	if afterLine < 0 || afterLine >= len(lines) {
+		return formatted // Invalid line number, return unchanged
+	}
+
+	// Generate separator based on the target line structure
+	separatorLine := generateSeparatorFromLine(lines[afterLine], outputDelimiter, sepChar)
+
+	// Insert separator after specified line
+	result := make([]string, 0, len(lines)+1)
+	for i, line := range lines {
+		result = append(result, line)
+		if i == afterLine {
+			result = append(result, separatorLine)
+		}
+	}
+
+	return strings.Join(result, "\n")
 }
 
-// FormatWithHeader formats input text by aligning columns based on a delimiter.
-// Header lines are excluded from width calculations but preserved in output.
-//
-// Parameters:
-//   - input: The input string to be formatted.
-//   - delimiter: The delimiter used to split each line into columns.
-//   - outputDelimiter: The delimiter to use in the output. If empty, the input delimiter is used.
-//   - headerLines: Number of header lines to exclude from alignment calculations.
-//
-// Returns:
-//   - A formatted string with aligned columns.
-//   - An error if the input is empty or if any other error occurs during formatting.
-//
-// Example:
-//
-//	FormatWithHeader("name,age\njohn,30\namy,25", ",", "|", 1)
-//	// Output:
-//	// name,age
-//	// john | 30
-//	// amy  | 25
-func FormatWithHeader(input, delimiter, outputDelimiter string, headerLines int) (string, error) {
-	return formatColumns(input, delimiter, outputDelimiter, headerLines)
+// generateSeparatorFromLine creates a separator that matches the structure of a formatted line
+func generateSeparatorFromLine(formattedLine, outputDelimiter, sepChar string) string {
+	if outputDelimiter == "" {
+		outputDelimiter = ":"
+	}
+
+	delimiterPattern := " " + outputDelimiter + " "
+	parts := strings.Split(formattedLine, delimiterPattern)
+
+	var separatorParts []string
+	for _, part := range parts {
+		separatorParts = append(separatorParts, strings.Repeat(sepChar, len(part)))
+	}
+
+	return strings.Join(separatorParts, strings.Repeat(sepChar, 1)+outputDelimiter+strings.Repeat(sepChar, 1))
 }
