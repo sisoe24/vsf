@@ -11,7 +11,7 @@ import (
 	"github.com/sisoe24/vsf"
 )
 
-const VERSION = "1.3.0"
+const VERSION = "1.4.0"
 
 func main() {
 	var (
