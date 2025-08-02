@@ -11,11 +11,14 @@ import (
 	"github.com/sisoe24/vsf"
 )
 
+const VERSION = "1.3.0"
+
 func main() {
 	var (
 		delimiter       = flag.String("d", ":", "Delimiter used. Default ':'")
 		outputDelimiter = flag.String("o", "", "Output text with selected delimiter")
 		headerLines     = flag.Int("header", 0, "Number of header lines to ignore in alignment calculations")
+		version         = flag.Bool("version", false, "Print current version")
 		usage           = flag.Bool("h", false, "Show usage information")
 	)
 
@@ -25,6 +28,12 @@ func main() {
 	if *usage {
 		flag.Usage()
 		os.Exit(0)
+	}
+
+	if *version {
+		fmt.Println(VERSION)
+		os.Exit(0)
+
 	}
 
 	scanner := bufio.NewScanner(os.Stdin)
@@ -53,6 +62,7 @@ func main() {
 }
 
 func showUsage() {
+	fmt.Fprintf(os.Stderr, "vsf version: %s\n", VERSION)
 	fmt.Fprintf(os.Stderr, "Usage: %s [OPTIONS]\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "\nOptions:\n")
 	flag.PrintDefaults()
